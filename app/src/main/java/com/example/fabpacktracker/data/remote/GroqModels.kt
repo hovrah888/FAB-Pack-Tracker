@@ -2,11 +2,6 @@ package com.example.fabpacktracker.data.remote
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import okhttp3.MediaType.Companion.toMediaType
-import retrofit2.Retrofit
-import retrofit2.converter.kotlinx.serialization.asConverterFactory
 
 //        { <- GroqResponse
 //            "id": "chatcmpl-…",
@@ -17,7 +12,7 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 //                "index": 0,
 //                "message": { <- GroqMessage
     //                "role": "assistant",
-//                    "content": "{"name": string, "description": string}" <- GroqContent
+//                    "content": "{"missing_info": [], "name": string, "description": string}" <- GroqContent
 //                 },
 //                "finish_reason": "stop"
 //            }
@@ -33,6 +28,7 @@ data class GroqMessage(
 
 @Serializable
 data class GroqContent( // как раз тот вывод, который отправляет groq, согласно промпту
+    // SerialName связывает имя из json и перменную из kotlin
     @SerialName("missing_info") val missingInfo : List<String> = emptyList(),
     val name : String,
     val description : String

@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
-import androidx.room.util.copy
 import com.example.fabpacktracker.data.local.AssetPack
 import com.example.fabpacktracker.data.local.AssetPackDao
 import com.example.fabpacktracker.data.model.ListingSuggestion
@@ -48,22 +47,23 @@ data class FormState(
 //твечает на вопрос «что загружено из базы»: Loading, New (режим создания),
 // Found (оригинал на руках), NotFound.
 sealed class PackState{
-    object Loading : PackState()
-    object New : PackState()
+    data object Loading : PackState()
+    data object New : PackState()
     data class Found(val pack: AssetPack) : PackState()
     data class NotFound(val message: String) : PackState()
 }
 
+// что с подсказочкой ии
 sealed class ListingSuggestionState{
-    object EmptyRequest : ListingSuggestionState()
-    object SendingRequest : ListingSuggestionState()
+    data object EmptyRequest : ListingSuggestionState()
+    data object SendingRequest : ListingSuggestionState()
     data class SuccessRequest(val suggestion: ListingSuggestion) : ListingSuggestionState()
     data class FailedRequest(val message: String) : ListingSuggestionState()
 }
 
 //это одноразовые сообщения экрану.
 sealed class SaveEvent {
-    object Saved : SaveEvent()
+    data object Saved : SaveEvent()
 
     // как я понимаю, тут дальше будут еще объекты (для ошибки)
 }

@@ -18,6 +18,7 @@ class PackListViewModel(private val dao: AssetPackDao) : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
 
+
     fun deletePack(pack: AssetPack) {
         viewModelScope.launch {
             dao.deletePack(pack)

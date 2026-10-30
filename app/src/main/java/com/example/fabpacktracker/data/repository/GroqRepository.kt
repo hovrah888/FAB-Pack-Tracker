@@ -13,8 +13,9 @@ import kotlinx.serialization.json.Json
 import retrofit2.HttpException
 import java.io.IOException
 
+// экстеншн функция к строке, которая зменяет дефисы на обычные (для корректного форматирования)
 private fun String.cleanText(): String =
-    this.replace('\u2010', '-')   // обычный «дефис» из набора Unicode
+    this.replace('\u2010', '-')   // обычный дефис из Unicode
         .replace('\u2011', '-')   // неразрывный дефис
         .replace('\u00A0', ' ')   // неразрывный пробел
         .trim()

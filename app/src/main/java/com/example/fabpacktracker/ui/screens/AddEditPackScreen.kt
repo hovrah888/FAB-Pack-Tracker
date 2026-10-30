@@ -1,10 +1,13 @@
 package com.example.fabpacktracker.ui.screens
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -12,11 +15,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -27,10 +35,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.fabpacktracker.viewmodel.AddEditPackViewModel
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.fabpacktracker.viewmodel.FormState
 import com.example.fabpacktracker.viewmodel.ListingSuggestionState
 import com.example.fabpacktracker.viewmodel.PackState
@@ -100,6 +108,7 @@ fun SuggestionDialog( // диалог подтверждения новой ин
 fun AddEditPackContent(
     form: FormState,
     suggestion: ListingSuggestionState,
+    missingInfo: List<String>,
     onNameChange: (String) -> Unit,
     onPriceChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
@@ -108,10 +117,15 @@ fun AddEditPackContent(
     onRequestSuggestion: () -> Unit,
     onApplySuggestion: () -> Unit,
     onDenySuggestion: () -> Unit,
+    onDismissMissingInfo: () -> Unit,
     onSave: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier = modifier) {
+    Column(modifier = modifier
+        .fillMaxWidth()
+        .verticalScroll(rememberScrollState())
+    )
+    {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -211,7 +225,57 @@ fun AddEditPackContent(
                 }
             }
             }
+
+        if (missingInfo.isNotEmpty()) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiary),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            )
+            {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Missing Information:",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onTertiary
+                            )
+                        }
+                        IconButton(onClick = onDismissMissingInfo) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "dismiss missing info"
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    missingInfo.forEach { item ->
+                        Text(
+                            text = "- $item",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onTertiary,
+                            modifier = Modifier.padding(vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+        }
     }
+
 }
 
 
@@ -222,10 +286,10 @@ fun AddEditPackScreen(
     modifier: Modifier = Modifier,
 )
 {
-    val form by viewModel.form.collectAsState()
-    val pack by viewModel.pack.collectAsState()
-    val suggestion by viewModel.suggestion.collectAsState()
-    val missingInfo by viewModel.missingInfo.collectAsState()
+    val form by viewModel.form.collectAsStateWithLifecycle()
+    val pack by viewModel.pack.collectAsStateWithLifecycle()
+    val suggestion by viewModel.suggestion.collectAsStateWithLifecycle()
+    val missingInfo by viewModel.missingInfo.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -245,6 +309,7 @@ fun AddEditPackScreen(
                     onSave = viewModel::savePack,
                     form = form,
                     suggestion = suggestion,
+                    missingInfo = missingInfo,
                     onNameChange = viewModel::onNameChange,
                     onPriceChange = viewModel::onPriceChange,
                     onDescriptionChange = viewModel::onDescriptionChange,
@@ -253,6 +318,7 @@ fun AddEditPackScreen(
                     onRequestSuggestion = viewModel::requestSuggestion,
                     onApplySuggestion = viewModel::applySuggestion,
                     onDenySuggestion = viewModel::denySuggestion,
+                    onDismissMissingInfo = viewModel::dismissMissingInfo,
                     modifier = modifier,
 
                 )

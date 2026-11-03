@@ -38,10 +38,10 @@ data class FormState(
         get() = name.isNotBlank() && priceValue != null && salesCountValue != null
 
     val priceValue: Double?
-        get() = price.replace(',', '.').toDoubleOrNull()?.takeIf { it >= 0 }
+        get() = if(price.isBlank()) 0.0 else price.trim().replace(',', '.').toDoubleOrNull()?.takeIf { it >= 0 }
 
     val salesCountValue: Int?
-        get() = if(salesCount.isBlank()) 0 else salesCount.toIntOrNull()?.takeIf { it >= 0 }
+        get() = if(salesCount.isBlank()) 0 else salesCount.trim().toIntOrNull()?.takeIf { it >= 0 }
 }
 
 //твечает на вопрос «что загружено из базы»: Loading, New (режим создания),

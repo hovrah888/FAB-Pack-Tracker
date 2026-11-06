@@ -9,7 +9,6 @@ activityCompose = "1.13.0"
 kotlin = "2.2.10"
 composeBom = "2026.02.01"
 
-# --- новое для этого проекта ---
 navigationCompose = "2.9.0"
 lifecycleViewmodelCompose = "2.11.0"
 room = "2.7.1"
@@ -18,9 +17,10 @@ retrofit = "2.11.0"
 kotlinxSerialization = "1.7.3"
 okhttp = "4.12.0"
 datastore = "1.1.1"
-jsoup = "1.23.2"
-firebaseCrashlyticsBuildtools = "3.0.8"
+#jsoup = "1.23.2"
+#firebaseCrashlyticsBuildtools = "3.0.8"
 roomKtx = "2.8.5"
+kotlinxCoroutines = "1.10.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -58,9 +58,10 @@ okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhtt
 
 # --- DataStore (настройки) ---
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
-jsoup = { group = "org.jsoup", name = "jsoup", version.ref = "jsoup" }
-firebase-crashlytics-buildtools = { group = "com.google.firebase", name = "firebase-crashlytics-buildtools", version.ref = "firebaseCrashlyticsBuildtools" }
+#jsoup = { group = "org.jsoup", name = "jsoup", version.ref = "jsoup" }
+#firebase-crashlytics-buildtools = { group = "com.google.firebase", name = "firebase-crashlytics-buildtools", version.ref = "firebaseCrashlyticsBuildtools" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "roomKtx" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

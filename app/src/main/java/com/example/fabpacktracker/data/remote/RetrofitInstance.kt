@@ -9,9 +9,13 @@ import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 
 object RetrofitInstance{
-    // объект джсона, исп. в RetrofitInstance и GroqRepository, можно оставить публичным в RetrofitInstance,
-    // ведь он итак используеться только в контексте запросов к groq api
-    val json = Json { ignoreUnknownKeys = true } // игнорируем ненужные ключи
+    // ~объект джсона, исп. в RetrofitInstance и GroqRepository, можно оставить публичным в RetrofitInstance,
+    // ведь он итак используеться только в контексте запросов к groq api~
+
+    // UPD. при написании юнит тестов все таки пришлось вынести
+    //~val json = Json { ignoreUnknownKeys = true } // игнорируем ненужные ключи
+    val json = AppJson.json
+
 
     // HTTP-клиент для сетевого запроса
     private val client = OkHttpClient.Builder()

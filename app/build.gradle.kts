@@ -29,6 +29,12 @@ android {
         buildConfigField("String", "GROQ_API_KEY", "\"${localProps.getProperty("groq_api_key", "")}\"")
     }
 
+    // нужно для локальных юнит тестов, чтобы некоторые методы (в данном случае, Log) не выбрасывали ошибки
+    // желательно потом убрать и помнить про это !
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
+
     buildTypes {
         release {
             optimization {
@@ -46,6 +52,8 @@ android {
     }
 }
 
+
+
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
@@ -60,7 +68,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    implementation(libs.firebase.crashlytics.buildtools)
+    //implementation(libs.firebase.crashlytics.buildtools)
     implementation(libs.room.ktx)
     ksp(libs.androidx.room.compiler)
     implementation(libs.retrofit)
@@ -69,9 +77,10 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.androidx.datastore.preferences)
     implementation("androidx.compose.material:material-icons-core")
-    implementation("org.jsoup:jsoup:1.18.1")
+    //implementation("org.jsoup:jsoup:1.18.1")
 
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

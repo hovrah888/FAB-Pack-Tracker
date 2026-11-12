@@ -119,6 +119,8 @@ class AddEditPackViewModel(
         val form = _form.value
         val price = form.priceValue ?: return // подмена запятой в значении цены(double) на точку
         val salesCount = form.salesCountValue ?: return
+        if (form.name.isBlank()) return // с пустым именем тоже не пропускать!
+
         viewModelScope.launch {
             when(val state = _pack.value){ // smart cast (обязательно)
                 PackState.New -> { // при новом паке вызывается insertPack у dao

@@ -123,8 +123,7 @@ class GroqRepositoryTest {
 
             assertTrue("code $code: expected failure", result.isFailure)
             assertSame("code $code: another exception returned", error, result.exceptionOrNull())
-            //assertSame(error.code(), code) // летит странная ошибка : Expected :401  Actual   :401
-            assertEquals(error.code(), code) // тут все в порядке
+            assertEquals(error.code(), code) // коды ошибок совпадают
         }
     }
 
@@ -245,13 +244,3 @@ class GroqRepositoryTest {
 
 }
 
-class FakeGroqApi(
-    private val behavior: suspend (ChatRequest) -> GroqResponse
-) : GroqApi {
-    var lastRequest: ChatRequest? = null // запомнить, что прислал репозиторий
-
-    override suspend fun createChat(request: ChatRequest): GroqResponse {
-        lastRequest = request
-        return behavior(request)
-    }
-}

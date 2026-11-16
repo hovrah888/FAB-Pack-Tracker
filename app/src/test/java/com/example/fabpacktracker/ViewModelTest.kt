@@ -1,18 +1,25 @@
 package com.example.fabpacktracker
 
+import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.fabpacktracker.data.local.AssetPack
+import com.example.fabpacktracker.data.model.ListingSuggestion
 import com.example.fabpacktracker.data.remote.AppJson
+import com.example.fabpacktracker.data.remote.GroqChoice
+import com.example.fabpacktracker.data.remote.GroqMessage
 import com.example.fabpacktracker.data.remote.GroqResponse
 import com.example.fabpacktracker.data.repository.GroqRepository
 import com.example.fabpacktracker.viewmodel.AddEditPackViewModel
 import com.example.fabpacktracker.viewmodel.FormState
+import com.example.fabpacktracker.viewmodel.ListingSuggestionState
 import com.example.fabpacktracker.viewmodel.NEW_PACK_ID
 import com.example.fabpacktracker.viewmodel.PackState
 import com.example.fabpacktracker.viewmodel.SaveEvent
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertNull
 import junit.framework.TestCase.assertTrue
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -24,6 +31,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import okio.IOException
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TestWatcher
@@ -246,5 +254,226 @@ class AddEditPackViewModelTest{
         viewModel.savePack()
         assertTrue(events.isEmpty())
         assertEquals(samplePack, dao.packs.first())
+    }
+
+
+    // --- ТЕСТЫ ПОД requestSuggestion, applySuggestion, denySuggestion, dismissMissingInfo ---
+
+    // собирает ответ сервера вокруг текста, который "сочинила модель"
+    private fun responseWith(content: String) = GroqResponse(
+        choices = listOf(GroqChoice(GroqMessage(role = "assistant", content = content)))
+    )
+
+
+
+    // при успешном запросе будет ожидаемый валидный результат
+    @Test
+    fun `requestSuggestion shows loading and then success`() = runTest {
+        // Результат с подделки приходит мгновенно, пропуская состояние SendingRequest,
+        // и поэтому это состояние без некой задержки проверить нельзя.
+        // Нужно, чтобы подделка ждала, пока тест её не отпустит. В корутинах есть
+        // некая коробочка с результатом CompletableDeferred, которая может заполняться потом
+
+        val gate = CompletableDeferred<GroqResponse>() // пустая коробочка
+        val fakeGroqApi = FakeGroqApi{ gate.await() } // подделка ждет результат с коробочки и получает его через await()
+        val repo = GroqRepository(api = fakeGroqApi, json = AppJson.json)
+        val viewModel = AddEditPackViewModel(FakeAssetPackDao(), NEW_PACK_ID, repo)
+
+        viewModel.onNameChange("Pack")
+        viewModel.requestSuggestion()
+
+        assertEquals(ListingSuggestionState.SendingRequest, viewModel.suggestion.value) // ловится промежуточное состояние!
+
+        gate.complete(responseWith("""{"name": "New Pack", "description": "Description", "missing_info": []}"""))
+
+        assertEquals(
+            ListingSuggestionState.SuccessRequest(suggestion = ListingSuggestion(name = "New Pack", description = "Description")),
+            viewModel.suggestion.value
+        )
+
+    }
+
+    // если сервер вернул ошибку, то FailedRequest(...)
+    @Test
+    fun `requestSuggestion throws exception and then failed`() = runTest{
+        val gate = CompletableDeferred<GroqResponse>()
+        val fakeGroqApi = FakeGroqApi{ gate.await() }
+        val repo = GroqRepository(api = fakeGroqApi, json = AppJson.json)
+        val viewModel = AddEditPackViewModel(FakeAssetPackDao(), NEW_PACK_ID, repo)
+
+        viewModel.onNameChange("Pack")
+        viewModel.requestSuggestion()
+        assertEquals(ListingSuggestionState.SendingRequest, viewModel.suggestion.value) // ловится промежуточное состояние!
+
+        gate.completeExceptionally(exception = IOException("no network"))
+
+        assertTrue(viewModel.suggestion.value is ListingSuggestionState.FailedRequest)
+    }
+
+    // при двойном вызове обязан вызваться только один запрос
+    @Test
+    fun `only one is expected when two requests are called`() = runTest {
+
+
+        val gate = CompletableDeferred<GroqResponse>()
+        val fakeGroqApi = FakeGroqApi{ gate.await() }
+        val repo = GroqRepository(api = fakeGroqApi, json = AppJson.json)
+        val viewModel = AddEditPackViewModel(FakeAssetPackDao(), NEW_PACK_ID, repo)
+
+        viewModel.onNameChange("Pack")
+
+        // Двойной одновременный вызов
+        viewModel.requestSuggestion()
+        viewModel.requestSuggestion()
+
+        assertEquals(ListingSuggestionState.SendingRequest, viewModel.suggestion.value) // ловится промежуточное состояние!
+
+        gate.complete(responseWith("""{"name": "New Pack", "description": "Description", "missing_info": []}"""))
+
+        assertTrue(viewModel.suggestion.value is ListingSuggestionState.SuccessRequest)
+        assertEquals(1, fakeGroqApi.callCount) // Вызов fakeGroqApi должен быть ТОЛЬКО ОДИН
+    }
+
+    // при второй попытке после ошибки результат должен быть нормальным
+    @Test
+    fun `second attempt after error succeeds`() = runTest {
+
+        // тут можно и без "коробочки"
+        lateinit var fakeGroqApi: FakeGroqApi
+        fakeGroqApi = FakeGroqApi {
+            if (fakeGroqApi.callCount == 1) throw IOException("no network") // при первом обращении кинуть ошибку
+            responseWith("""{"name": "New Pack", "description": "Description", "missing_info": []}""")
+        }
+        val repo = GroqRepository(api = fakeGroqApi, json = AppJson.json)
+        val viewModel = AddEditPackViewModel(FakeAssetPackDao(), NEW_PACK_ID, repo)
+        viewModel.onNameChange("Pack")
+
+        viewModel.requestSuggestion()
+        assertTrue(viewModel.suggestion.value is ListingSuggestionState.FailedRequest) // 1й вызов - ошибка
+
+        viewModel.requestSuggestion()
+        assertTrue(viewModel.suggestion.value is ListingSuggestionState.SuccessRequest) // 2й - все нормально
+        assertEquals(2, fakeGroqApi.callCount) // будет 2 вызова
+    }
+
+
+    private fun viewModelWithSuggestion(): AddEditPackViewModel {
+        val api = FakeGroqApi { responseWith("""{"name": "New Pack", "description": "New Description", "missing_info": ["file formats"]}""") }
+        val viewModel = AddEditPackViewModel(FakeAssetPackDao(), NEW_PACK_ID, GroqRepository(api, AppJson.json))
+        viewModel.onNameChange("Pack")
+        viewModel.requestSuggestion()
+        return viewModel
+    }
+
+    // при применении подсказки НЕ МЕНЯЕТСЯ ничего другого кроме имени и описания
+    @Test
+    fun `applySuggestion updates only name and description while price, url and salesCount remain unchanged`() = runTest {
+
+        val viewModel = viewModelWithSuggestion()
+
+        viewModel.onPriceChange("10.0")
+        viewModel.onDescriptionChange("Description")
+        viewModel.onUrlChange("https://example.com")
+        viewModel.onSalesCountChange("10")
+
+        assertTrue(viewModel.suggestion.value is ListingSuggestionState.SuccessRequest)
+
+        // Применяем подсказку
+        viewModel.applySuggestion()
+        assertTrue(viewModel.suggestion.value is ListingSuggestionState.EmptyRequest)
+
+        val form = viewModel.form.value
+        val missingInfo = viewModel.missingInfo.value
+        assertEquals("New Pack", form.name)              // Изменилось
+        assertEquals("New Description", form.description)// Изменилось
+        assertEquals("10.0", form.price)               // Осталось прежним
+        assertEquals("https://example.com", form.url) // Осталось прежним
+        assertEquals("10", form.salesCount) // Осталось прежним
+        assertEquals(listOf("file formats"), missingInfo) // список появился
+
+    }
+
+    // в состояниях EmptyRequest, SendingRequest и FailedRequest форма не меняется
+    @Test
+    fun `applySuggestion in non-success states does not modify form`() = runTest {
+        val gate = CompletableDeferred<GroqResponse>()
+        val api = FakeGroqApi {gate.await() }
+        val viewModel = AddEditPackViewModel(FakeAssetPackDao(), NEW_PACK_ID, GroqRepository(api, AppJson.json))
+        viewModel.onNameChange("Pack")
+        val initialForm = viewModel.form.value
+
+        assertEquals(ListingSuggestionState.EmptyRequest, viewModel.suggestion.value)
+        viewModel.applySuggestion()
+        assertEquals(ListingSuggestionState.EmptyRequest, viewModel.suggestion.value) // состояние должно быть тем же
+        assertEquals(initialForm, viewModel.form.value) // форма не изменилась
+        assertTrue(viewModel.missingInfo.value.isEmpty())
+
+        viewModel.requestSuggestion()
+        assertEquals(ListingSuggestionState.SendingRequest, viewModel.suggestion.value)
+        viewModel.applySuggestion()
+        assertEquals(ListingSuggestionState.SendingRequest, viewModel.suggestion.value) // состояние должно быть тем же
+        assertEquals(initialForm, viewModel.form.value) // форма не изменилась
+        assertTrue(viewModel.missingInfo.value.isEmpty())
+
+        gate.completeExceptionally(IOException("err"))
+        assertTrue(viewModel.suggestion.value is ListingSuggestionState.FailedRequest)
+        viewModel.applySuggestion()
+        assertTrue(viewModel.suggestion.value is ListingSuggestionState.FailedRequest) // состояние должно быть тем же
+        assertEquals(initialForm, viewModel.form.value) // форма не изменилась
+        assertTrue(viewModel.missingInfo.value.isEmpty())
+    }
+
+    // При отклонении подсказки в состоянии SuccessRequest состояние сбрасывается в EmptyRequest, а форма остается неизменной
+    @Test
+    fun `denySuggestion in SuccessRequest state resets suggestion to EmptyRequest without modifying form`() = runTest {
+        val viewModel = viewModelWithSuggestion()
+        val initialForm = viewModel.form.value
+
+        assertTrue(viewModel.suggestion.value is ListingSuggestionState.SuccessRequest)
+
+        viewModel.denySuggestion()
+
+        assertEquals(ListingSuggestionState.EmptyRequest, viewModel.suggestion.value)
+        assertEquals(initialForm, viewModel.form.value)
+    }
+
+    // При отклонении подсказки в состоянии SendingRequest состояние сбрасывается в EmptyRequest
+    @Test
+    fun `denySuggestion in SendingRequest state resets suggestion to EmptyRequest`() = runTest {
+        val gate = CompletableDeferred<GroqResponse>()
+        val fakeGroqApi = FakeGroqApi { gate.await() }
+        val repo = GroqRepository(api = fakeGroqApi, json = AppJson.json)
+        val viewModel = AddEditPackViewModel(FakeAssetPackDao(), NEW_PACK_ID, repo)
+
+        viewModel.onNameChange("Pack")
+        viewModel.requestSuggestion()
+
+        assertEquals(ListingSuggestionState.SendingRequest, viewModel.suggestion.value)
+
+        viewModel.denySuggestion()
+
+        assertEquals(ListingSuggestionState.EmptyRequest, viewModel.suggestion.value)
+
+        // сервер отвечает после того, как пользователь отклонил запрос в состоянии SendingRequest
+        gate.complete(responseWith("""{"name": "New Pack", "description": "Description", "missing_info": []}"""))
+
+        // Когда сервер ответит, корутина завершится и обновит состояние на SuccessRequest
+        assertEquals(
+            ListingSuggestionState.SuccessRequest(suggestion = ListingSuggestion(name = "New Pack", description = "Description")),
+            viewModel.suggestion.value
+        )
+    }
+
+    // При вызове dismissMissingInfo список недостающей информации очищается
+    @Test
+    fun `dismissMissingInfo clears missingInfo list`() = runTest {
+        val viewModel = viewModelWithSuggestion()
+
+        viewModel.applySuggestion()
+        assertEquals(listOf("file formats"), viewModel.missingInfo.value)
+
+        viewModel.dismissMissingInfo()
+
+        assertTrue(viewModel.missingInfo.value.isEmpty())
     }
 }

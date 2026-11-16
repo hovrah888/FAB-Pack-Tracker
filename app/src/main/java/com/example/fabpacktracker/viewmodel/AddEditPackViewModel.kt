@@ -198,7 +198,8 @@ class AddEditPackViewModel(
         }
 
     }
-
+    //Есть незначительная ошибка: поздний ответ приводит к повторному открытию диалогового окна после того,
+    // как в нем был выбран отказ; интерфейс итак не допускает это.
     fun denySuggestion(){
         _suggestion.value = ListingSuggestionState.EmptyRequest
     }

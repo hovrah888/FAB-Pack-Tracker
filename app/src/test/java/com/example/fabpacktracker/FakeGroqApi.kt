@@ -10,8 +10,13 @@ class FakeGroqApi(
 ) : GroqApi {
     var lastRequest: ChatRequest? = null // запомнить, что прислал репозиторий
 
+    var callCount = 0
+        private set // только изменения внутри класса и чтения из вне
+
+
     override suspend fun createChat(request: ChatRequest): GroqResponse {
         lastRequest = request
+        callCount++
         return behavior(request)
     }
 }

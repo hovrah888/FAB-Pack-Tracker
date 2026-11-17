@@ -1,8 +1,5 @@
 package com.example.fabpacktracker
 
-import androidx.compose.runtime.collectAsState
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.fabpacktracker.data.local.AssetPack
 import com.example.fabpacktracker.data.model.ListingSuggestion
 import com.example.fabpacktracker.data.remote.AppJson
@@ -17,12 +14,10 @@ import com.example.fabpacktracker.viewmodel.NEW_PACK_ID
 import com.example.fabpacktracker.viewmodel.PackState
 import com.example.fabpacktracker.viewmodel.SaveEvent
 import junit.framework.TestCase.assertEquals
-import junit.framework.TestCase.assertNull
 import junit.framework.TestCase.assertTrue
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestDispatcher

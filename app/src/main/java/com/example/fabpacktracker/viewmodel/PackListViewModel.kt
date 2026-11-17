@@ -17,19 +17,12 @@ class PackListViewModel(private val dao: AssetPackDao) : ViewModel() {
         // нужно превратить холодный флоу в горячий стейт флоу, чтобы исключить постоянные подписки
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-
-
     fun deletePack(pack: AssetPack) {
         viewModelScope.launch {
             dao.deletePack(pack)
         }
     }
 
-    fun insertPack(pack: AssetPack) {
-        viewModelScope.launch {
-            dao.insertPack(pack)
-        }
-    }
 }
 
 class PackListViewModelFactory(private val dao: AssetPackDao) : ViewModelProvider.Factory {
